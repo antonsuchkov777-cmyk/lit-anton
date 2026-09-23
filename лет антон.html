@@ -1,0 +1,1183 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Антон птичка</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            background-color: #1a1a2e;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            color: #fff;
+            overflow: hidden;
+        }
+
+        h1 {
+            margin-bottom: 12px;
+            font-size: 28px;
+            letter-spacing: 1px;
+            text-shadow: 0 2px 4px rgba(0,0,0,.5);
+        }
+
+        #game-container {
+            position: relative;
+            box-shadow: 0 10px 30px rgba(0,0,0,.6);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        canvas {
+            display: block;
+            background: #70c5ce;
+            cursor: pointer;
+        }
+
+        .hint {
+            margin-top: 14px;
+            font-size: 14px;
+            color: #a0a0c0;
+        }
+
+        /* Кнопка Меню в углу */
+        #controls-container {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            display: flex;
+            gap: 8px;
+            z-index: 10;
+        }
+
+        .control-btn {
+            background: rgba(0, 0, 0, 0.6);
+            border: 2px solid #fff;
+            border-radius: 50%;
+            width: 38px;
+            height: 38px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            color: #fff;
+            transition: background 0.2s, transform 0.1s;
+            outline: none;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .control-btn:hover {
+            background: rgba(0, 0, 0, 0.85);
+        }
+
+        .control-btn:active {
+            transform: scale(0.9);
+        }
+
+        /* Выплывающая плашка уведомления о достижении */
+        #toast {
+            position: absolute;
+            top: -90px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90%;
+            background: rgba(20, 20, 35, 0.95);
+            border: 2px solid #ffd700;
+            border-radius: 10px;
+            padding: 10px 14px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.7);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            z-index: 25;
+            transition: top 0.5s ease-in-out;
+            pointer-events: none;
+        }
+
+        #toast.show {
+            top: 14px;
+        }
+
+        .toast-icon { font-size: 28px; }
+        .toast-text { text-align: left; }
+        .toast-header { font-size: 11px; color: #ffd700; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; }
+        .toast-name { font-size: 14px; font-weight: bold; color: #fff; margin: 2px 0; }
+        .toast-desc { font-size: 11px; color: #bbb; }
+
+        /* Общие стили модальных окон */
+        .modal-window {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(15, 15, 30, 0.96);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            z-index: 20;
+        }
+
+        .modal-title {
+            font-size: 22px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #ffeb3b;
+            text-shadow: 0 2px 4px #000;
+        }
+
+        /* Стили Меню опций */
+        .menu-option-btn {
+            width: 80%;
+            padding: 12px;
+            margin: 6px 0;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            color: #fff;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+            outline: none;
+        }
+
+        .menu-option-btn:hover {
+            background: rgba(255, 255, 255, 0.18);
+        }
+
+        .menu-option-btn:active {
+            transform: scale(0.97);
+        }
+
+        /* Окно достижений */
+        .achievement-list {
+            width: 100%;
+            max-height: 380px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            padding-right: 4px;
+        }
+
+        .achievement-list::-webkit-scrollbar,
+        .skins-grid::-webkit-scrollbar {
+            width: 4px;
+        }
+        .achievement-list::-webkit-scrollbar-thumb,
+        .skins-grid::-webkit-scrollbar-thumb {
+            background: #e64a19;
+            border-radius: 2px;
+        }
+
+        .achievement-item {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 8px;
+            padding: 10px 12px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .achievement-item.unlocked {
+            background: rgba(76, 175, 80, 0.15);
+            border-color: #4caf50;
+            box-shadow: 0 0 8px rgba(76, 175, 80, 0.2);
+        }
+
+        .achievement-item.locked {
+            opacity: 0.55;
+            background: rgba(0, 0, 0, 0.5);
+            border-color: rgba(255, 255, 255, 0.05);
+            box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.85);
+            filter: grayscale(40%);
+        }
+
+        .achievement-icon { font-size: 26px; }
+        .achievement-info { flex: 1; text-align: left; }
+        .achievement-name { font-weight: bold; font-size: 13px; color: #fff; }
+        .achievement-desc { font-size: 10.5px; margin-top: 2px; }
+        
+        .achievement-item.unlocked .achievement-desc { color: #81c784; }
+        .achievement-item.locked .achievement-desc { color: #666; font-style: italic; }
+
+        .achievement-status { font-size: 15px; }
+
+        /* Стили магазина скинов */
+        .skins-coins-badge {
+            font-size: 16px;
+            color: #ffd700;
+            font-weight: bold;
+            margin-bottom: 12px;
+        }
+
+        .skins-grid {
+            width: 100%;
+            max-height: 340px;
+            overflow-y: auto;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            padding-right: 4px;
+        }
+
+        .skin-card {
+            background: rgba(255, 255, 255, 0.08);
+            border: 2px solid rgba(255, 255, 255, 0.15);
+            border-radius: 10px;
+            padding: 10px 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            transition: all 0.2s;
+        }
+
+        .skin-card.active-skin {
+            border-color: #4caf50;
+            background: rgba(76, 175, 80, 0.2);
+        }
+
+        .skin-preview {
+            width: 42px;
+            height: 42px;
+            object-fit: contain;
+            margin-bottom: 6px;
+        }
+
+        .skin-title {
+            font-size: 12px;
+            font-weight: bold;
+            margin-bottom: 6px;
+            text-align: center;
+        }
+
+        .skin-btn {
+            width: 100%;
+            padding: 6px 4px;
+            border-radius: 6px;
+            border: none;
+            font-size: 11px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .skin-btn.buy {
+            background: #ffd700;
+            color: #000;
+        }
+        .skin-btn.buy:hover { background: #ffea00; }
+
+        .skin-btn.select {
+            background: #2196f3;
+            color: #fff;
+        }
+        .skin-btn.select:hover { background: #42a5f5; }
+
+        .skin-btn.selected {
+            background: #4caf50;
+            color: #fff;
+            cursor: default;
+        }
+
+        .close-btn {
+            margin-top: 15px;
+            padding: 8px 24px;
+            background: #e64a19;
+            border: none;
+            border-radius: 6px;
+            color: #fff;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 14px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+            transition: background 0.2s;
+        }
+
+        .close-btn:hover { background: #ff5722; }
+    </style>
+</head>
+<body>
+    <h1>Антон птичка</h1>
+
+    <div id="game-container">
+        <canvas id="canvas" width="360" height="580"></canvas>
+        
+        <!-- Кнопка Меню -->
+        <div id="controls-container">
+            <button id="btn-menu" class="control-btn" title="Меню">☰</button>
+        </div>
+
+        <!-- Выплывающая плашка уведомления о достижении -->
+        <div id="toast">
+            <div class="toast-icon" id="toast-icon">🏆</div>
+            <div class="toast-text">
+                <div class="toast-header">Новое достижение!</div>
+                <div class="toast-name" id="toast-name">Название</div>
+                <div class="toast-desc" id="toast-desc">Описание</div>
+            </div>
+        </div>
+
+        <!-- Модальное окно главного Меню -->
+        <div id="menu-modal" class="modal-window">
+            <div class="modal-title">⚙️ НАСТРОЙКИ</div>
+            <button id="menu-btn-music" class="menu-option-btn">Музыка: ВКЛ</button>
+            <button id="menu-btn-sfx" class="menu-option-btn">Звуки: ВКЛ</button>
+            <button id="menu-btn-skins" class="menu-option-btn">👕 Скины</button>
+            <button id="menu-btn-achievements" class="menu-option-btn">🏆 Достижения</button>
+            <button class="close-btn" id="btn-close-menu">Закрыть</button>
+        </div>
+
+        <!-- Модальное окно Скинов -->
+        <div id="skins-modal" class="modal-window">
+            <div class="modal-title">👕 МАГАЗИН СКИНОВ</div>
+            <div class="skins-coins-badge">Баланс: 🪙 <span id="skins-balance">0</span></div>
+            <div class="skins-grid" id="skins-grid"></div>
+            <button class="close-btn" id="btn-close-skins">Назад</button>
+        </div>
+
+        <!-- Окно списка достижений -->
+        <div id="achievements-modal" class="modal-window">
+            <div class="modal-title">🏆 ДОСТИЖЕНИЯ</div>
+            <div class="achievement-list" id="achievement-list"></div>
+            <button class="close-btn" id="btn-close-achievements">Назад</button>
+        </div>
+    </div>
+
+    <p class="hint">Тыкай чтобы летать</p>
+
+    <script>
+        // ==========================================================
+        // БЛОК НАСТРОЕК ФАЙЛОВ И ТЕКСТУР (Легкое редактирование)
+        // Вы можете изменять имена файлов и добавлять их в папку с игрой
+        // ==========================================================
+        const CONFIG = {
+            images: {
+                birdDefault: 'bird.png',      // Основной скин птички
+                pipe: 'pipe.png',             // Текстура труб
+                ground: 'ground.png',         // Текстура земли
+                background: 'background.png', // Текстура фона
+                coin: 'coin.png',             // Картинка монетки в проходе
+                coinGui: 'coin_gui.png'        // Иконка монетки в интерфейсе
+            },
+            sounds: {
+                flap: 'jamp.mp3',             // Звук взмаха крыла
+                score: 'point.mp3',           // Звук прохождения трубы
+                hit: 'hit.mp3',               // Звук удара / смерти
+                music: 'music.mp3',           // Фоновая музыка
+                coin: 'coin.mp3',             // Звук сбора монетки
+                click: 'click.mp3',           // Звук нажатия на кнопки
+                buy: 'buy.mp3',               // Звук успешной покупки скина
+                noMoney: 'nomoney.mp3'        // Звук нехватки монет
+            },
+            skins: [
+                { id: 'default', name: 'Стандарт', price: 0, file: 'bird.png' },
+                { id: 'skin1',   name: 'Скин 1',    price: 10, file: 'skin1.png' },
+                { id: 'skin2',   name: 'Скин 2',    price: 15, file: 'skin2.png' },
+                { id: 'skin3',   name: 'Скин 3',    price: 25, file: 'skin3.png' },
+                { id: 'skin4',   name: 'Скин 4',    price: 50, file: 'skin4.png' },
+                { id: 'skin5',   name: 'Скин 5',    price: 100, file: 'skin5.png' }
+            ]
+        };
+
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        // ==========================================================
+        // ЗАГРУЗКА ТЕКСТУР И СКИНОА
+        // ==========================================================
+        const birdSprite = new Image();
+        let selectedSkin = localStorage.getItem('flappy_selected_skin') || 'default';
+        let unlockedSkins = JSON.parse(localStorage.getItem('flappy_unlocked_skins') || '["default"]');
+
+        function updateBirdSprite() {
+            const currentSkin = CONFIG.skins.find(s => s.id === selectedSkin) || CONFIG.skins[0];
+            birdSprite.src = currentSkin.file;
+        }
+        updateBirdSprite();
+
+        const pipeTexture = new Image(); pipeTexture.src = CONFIG.images.pipe;
+        const groundTexture = new Image(); groundTexture.src = CONFIG.images.ground;
+        const backgroundTexture = new Image(); backgroundTexture.src = CONFIG.images.background;
+        const coinTexture = new Image(); coinTexture.src = CONFIG.images.coin;
+        const coinGuiTexture = new Image(); coinGuiTexture.src = CONFIG.images.coinGui;
+
+        // ==========================================================
+        // ЗВУКИ
+        // ==========================================================
+        const sounds = {
+            flap: new Audio(CONFIG.sounds.flap),
+            score: new Audio(CONFIG.sounds.score),
+            hit: new Audio(CONFIG.sounds.hit),
+            music: new Audio(CONFIG.sounds.music),
+            coin: new Audio(CONFIG.sounds.coin),
+            click: new Audio(CONFIG.sounds.click),
+            buy: new Audio(CONFIG.sounds.buy),
+            noMoney: new Audio(CONFIG.sounds.noMoney)
+        };
+
+        sounds.music.loop = true;
+        sounds.music.volume = 0.25;
+
+        let musicMuted = false;
+        let sfxMuted = false;
+
+        function playSfx(audio) {
+            if (!audio || sfxMuted) return;
+            audio.currentTime = 0;
+            audio.play().catch(() => {});
+        }
+
+        function triggerButtonClickSound() {
+            playSfx(sounds.click);
+        }
+
+        function startMusic() {
+            sounds.music.currentTime = 0;
+            sounds.music.play().catch(() => {});
+        }
+
+        const STATE = {
+            START: 0,
+            PLAYING: 1,
+            GAMEOVER: 2
+        };
+
+        let currentState = STATE.START;
+        let score = 0;
+        let highScore = localStorage.getItem('flappy_highscore') || 0;
+        let coins = parseInt(localStorage.getItem('flappy_coins') || '0');
+        let sessionCoins = 0;
+        let frames = 0;
+        let bgX = 0;
+
+        let ceilingHits = parseInt(localStorage.getItem('flappy_ceiling_hits') || '0');
+
+        // ==========================================================
+        // ДОСТИЖЕНИЯ (16 достижений)
+        // ==========================================================
+        const ACHIEVEMENTS = [
+            { id: 'ach_score_10', icon: '🥉', name: 'ну нармально нармально', desc: 'Набрать 10 очков' },
+            { id: 'ach_coins_10', icon: '🪙', name: '10 шекелей', desc: 'Набрать 10 монет' },
+            { id: 'ach_score_30', icon: '🥈', name: 'Э...э... КУДА!?', desc: 'Набрать 30 очков' },
+            { id: 'ach_coins_25', icon: '💰', name: 'при бабках', desc: 'Набрать 25 монет' },
+            { id: 'ach_score_50', icon: '🥇', name: 'ПРО в Антоне', desc: 'Набрать 50 очков' },
+            { id: 'ach_coins_50', icon: '💎', name: 'капитал не хилый', desc: 'Набрать 50 монет' },
+            { id: 'ach_score_100', icon: '👑', name: 'ЛЕГЕНДА В АНТОНЕ!!!', desc: 'Набрать 100 очков' },
+            { id: 'ach_coins_100', icon: '🎩', name: 'темщик да?', desc: 'Набрать 100 монет' },
+            { id: 'ach_pride_skins', icon: '🦚', name: 'гордыня', desc: 'Иметь все скины за монеты' },
+            { id: 'ach_envy_skin', icon: '👀', name: 'зависть', desc: 'Получить один скин' },
+            { id: 'ach_wrath_ceiling', icon: '💥', name: 'гнев', desc: 'Удариться о потолок 5 раз' },
+            { id: 'ach_greed_7coins', icon: '🤑', name: 'алочность', desc: 'Собрать за одну попытку 7 монеток' },
+            { id: 'ach_lust_69', icon: '💋', name: 'похоть', desc: 'Проиграть, когда значение очков равно 69' },
+            { id: 'ach_gluttony_30', icon: '🍔', name: 'чревоугодие', desc: 'Накопить 30 монет' },
+            { id: 'ach_sloth_0', icon: '🪨', name: 'лень', desc: 'Умереть, не набрав ни одного очка' },
+            { id: 'ach_sin8_score8', icon: '💀', name: 'восьмой грех', desc: 'Умереть, набрав 8 очков' }
+        ];
+
+        let unlockedAchievements = JSON.parse(localStorage.getItem('flappy_achievements') || '[]');
+
+        function checkAchievements() {
+            const paidSkinsTotal = CONFIG.skins.filter(s => s.id !== 'default').length;
+            const paidSkinsUnlocked = unlockedSkins.filter(id => id !== 'default').length;
+
+            ACHIEVEMENTS.forEach(ach => {
+                if (unlockedAchievements.includes(ach.id)) return;
+
+                let unlock = false;
+                if (ach.id === 'ach_score_10' && score >= 10) unlock = true;
+                else if (ach.id === 'ach_coins_10' && coins >= 10) unlock = true;
+                else if (ach.id === 'ach_score_30' && score >= 30) unlock = true;
+                else if (ach.id === 'ach_coins_25' && coins >= 25) unlock = true;
+                else if (ach.id === 'ach_score_50' && score >= 50) unlock = true;
+                else if (ach.id === 'ach_coins_50' && coins >= 50) unlock = true;
+                else if (ach.id === 'ach_score_100' && score >= 100) unlock = true;
+                else if (ach.id === 'ach_coins_100' && coins >= 100) unlock = true;
+                else if (ach.id === 'ach_pride_skins' && paidSkinsUnlocked >= paidSkinsTotal) unlock = true;
+                else if (ach.id === 'ach_envy_skin' && paidSkinsUnlocked >= 1) unlock = true;
+                else if (ach.id === 'ach_wrath_ceiling' && ceilingHits >= 5) unlock = true;
+                else if (ach.id === 'ach_greed_7coins' && sessionCoins >= 7) unlock = true;
+                else if (ach.id === 'ach_gluttony_30' && coins >= 30) unlock = true;
+
+                if (unlock) {
+                    unlockAchievement(ach);
+                }
+            });
+        }
+
+        function unlockAchievement(ach) {
+            if (!unlockedAchievements.includes(ach.id)) {
+                unlockedAchievements.push(ach.id);
+                localStorage.setItem('flappy_achievements', JSON.stringify(unlockedAchievements));
+                showToast(ach); // Вызов всплывающего сообщения
+            }
+        }
+
+        let toastTimeout;
+        function showToast(ach) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-icon').textContent = ach.icon;
+            document.getElementById('toast-name').textContent = ach.name;
+            document.getElementById('toast-desc').textContent = ach.desc;
+
+            toast.classList.add('show');
+            clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => {
+                toast.classList.remove('show');
+            }, 4000);
+        }
+
+        function renderAchievements() {
+            checkAchievements();
+            const list = document.getElementById('achievement-list');
+            list.innerHTML = '';
+            ACHIEVEMENTS.forEach(ach => {
+                const isUnlocked = unlockedAchievements.includes(ach.id);
+                const item = document.createElement('div');
+                item.className = `achievement-item ${isUnlocked ? 'unlocked' : 'locked'}`;
+                
+                const displayIcon = isUnlocked ? ach.icon : '🔒';
+                const displayDesc = isUnlocked ? ach.desc : 'Секретное описание (требуется разблокировать)';
+
+                item.innerHTML = `
+                    <div class="achievement-icon">${displayIcon}</div>
+                    <div class="achievement-info">
+                        <div class="achievement-name">${ach.name}</div>
+                        <div class="achievement-desc">${displayDesc}</div>
+                    </div>
+                    <div class="achievement-status">${isUnlocked ? '✅' : '❌'}</div>
+                `;
+                list.appendChild(item);
+            });
+        }
+
+        // ==========================================================
+        // ИНТЕРФЕЙС И МАГАЗИН СКИНОВ
+        // ==========================================================
+        const btnMenu = document.getElementById('btn-menu');
+        const menuModal = document.getElementById('menu-modal');
+        const btnCloseMenu = document.getElementById('btn-close-menu');
+
+        const menuBtnMusic = document.getElementById('menu-btn-music');
+        const menuBtnSfx = document.getElementById('menu-btn-sfx');
+        const menuBtnSkins = document.getElementById('menu-btn-skins');
+        const menuBtnAchievements = document.getElementById('menu-btn-achievements');
+
+        const skinsModal = document.getElementById('skins-modal');
+        const btnCloseSkins = document.getElementById('btn-close-skins');
+        const skinsGrid = document.getElementById('skins-grid');
+        const skinsBalance = document.getElementById('skins-balance');
+
+        const achievementsModal = document.getElementById('achievements-modal');
+        const btnCloseAchievements = document.getElementById('btn-close-achievements');
+
+        function renderSkins() {
+            skinsBalance.textContent = coins;
+            skinsGrid.innerHTML = '';
+
+            CONFIG.skins.forEach(skin => {
+                const isUnlocked = unlockedSkins.includes(skin.id);
+                const isSelected = selectedSkin === skin.id;
+
+                const card = document.createElement('div');
+                card.className = `skin-card ${isSelected ? 'active-skin' : ''}`;
+
+                let buttonHtml = '';
+                if (isSelected) {
+                    buttonHtml = `<button class="skin-btn selected">Выбрано</button>`;
+                } else if (isUnlocked) {
+                    buttonHtml = `<button class="skin-btn select" onclick="selectSkin('${skin.id}')">Выбрать</button>`;
+                } else {
+                    buttonHtml = `<button class="skin-btn buy" onclick="buySkin('${skin.id}', ${skin.price})">Купить (${skin.price} 🪙)</button>`;
+                }
+
+                card.innerHTML = `
+                    <img src="${skin.file}" class="skin-preview" onerror="this.src='bird.png'">
+                    <div class="skin-title">${skin.name}</div>
+                    ${buttonHtml}
+                `;
+                skinsGrid.appendChild(card);
+            });
+        }
+
+        window.buySkin = function(skinId, price) {
+            if (coins >= price) {
+                coins -= price;
+                localStorage.setItem('flappy_coins', coins);
+                unlockedSkins.push(skinId);
+                localStorage.setItem('flappy_unlocked_skins', JSON.stringify(unlockedSkins));
+                selectedSkin = skinId;
+                localStorage.setItem('flappy_selected_skin', selectedSkin);
+                updateBirdSprite();
+                renderSkins();
+                checkAchievements();
+                playSfx(sounds.buy); // Звук успешной покупки
+            } else {
+                playSfx(sounds.noMoney); // Звук недостатка монет
+            }
+        };
+
+        window.selectSkin = function(skinId) {
+            triggerButtonClickSound();
+            selectedSkin = skinId;
+            localStorage.setItem('flappy_selected_skin', selectedSkin);
+            updateBirdSprite();
+            renderSkins();
+        };
+
+        // События меню
+        btnMenu.addEventListener('click', (e) => {
+            e.stopPropagation();
+            triggerButtonClickSound();
+            menuModal.style.display = 'flex';
+        });
+        btnMenu.addEventListener('touchstart', (e) => { e.stopPropagation(); });
+
+        btnCloseMenu.addEventListener('click', (e) => {
+            e.stopPropagation();
+            triggerButtonClickSound();
+            menuModal.style.display = 'none';
+        });
+        btnCloseMenu.addEventListener('touchstart', (e) => { e.stopPropagation(); });
+
+        menuBtnMusic.addEventListener('click', (e) => {
+            e.stopPropagation();
+            triggerButtonClickSound();
+            musicMuted = !musicMuted;
+            sounds.music.muted = musicMuted;
+            menuBtnMusic.textContent = musicMuted ? 'Музыка: ВЫКЛ' : 'Музыка: ВКЛ';
+        });
+        menuBtnMusic.addEventListener('touchstart', (e) => { e.stopPropagation(); });
+
+        menuBtnSfx.addEventListener('click', (e) => {
+            e.stopPropagation();
+            triggerButtonClickSound();
+            sfxMuted = !sfxMuted;
+            menuBtnSfx.textContent = sfxMuted ? 'Звуки: ВЫКЛ' : 'Звуки: ВКЛ';
+        });
+        menuBtnSfx.addEventListener('touchstart', (e) => { e.stopPropagation(); });
+
+        menuBtnSkins.addEventListener('click', (e) => {
+            e.stopPropagation();
+            triggerButtonClickSound();
+            menuModal.style.display = 'none';
+            renderSkins();
+            skinsModal.style.display = 'flex';
+        });
+        menuBtnSkins.addEventListener('touchstart', (e) => { e.stopPropagation(); });
+
+        btnCloseSkins.addEventListener('click', (e) => {
+            e.stopPropagation();
+            triggerButtonClickSound();
+            skinsModal.style.display = 'none';
+            menuModal.style.display = 'flex';
+        });
+        btnCloseSkins.addEventListener('touchstart', (e) => { e.stopPropagation(); });
+
+        menuBtnAchievements.addEventListener('click', (e) => {
+            e.stopPropagation();
+            triggerButtonClickSound();
+            menuModal.style.display = 'none';
+            renderAchievements();
+            achievementsModal.style.display = 'flex';
+        });
+        menuBtnAchievements.addEventListener('touchstart', (e) => { e.stopPropagation(); });
+
+        btnCloseAchievements.addEventListener('click', (e) => {
+            e.stopPropagation();
+            triggerButtonClickSound();
+            achievementsModal.style.display = 'none';
+            menuModal.style.display = 'flex';
+        });
+        btnCloseAchievements.addEventListener('touchstart', (e) => { e.stopPropagation(); });
+
+        menuModal.addEventListener('click', (e) => { e.stopPropagation(); });
+        menuModal.addEventListener('touchstart', (e) => { e.stopPropagation(); });
+        skinsModal.addEventListener('click', (e) => { e.stopPropagation(); });
+        skinsModal.addEventListener('touchstart', (e) => { e.stopPropagation(); });
+        achievementsModal.addEventListener('click', (e) => { e.stopPropagation(); });
+        achievementsModal.addEventListener('touchstart', (e) => { e.stopPropagation(); });
+
+        // ==========================================================
+        // ПТИЦА
+        // ==========================================================
+        const bird = {
+            x: 60,
+            y: 250,
+            radius: 11,
+            drawWidth: 38,
+            drawHeight: 38,
+            gravity: 0.27,
+            jump: -6.0,
+            velocity: 0,
+            rotation: 0,
+            ceilingHitRegistered: false,
+
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+
+                if (currentState === STATE.PLAYING) {
+                    this.rotation = Math.min(
+                        Math.PI / 4,
+                        Math.max(-Math.PI / 4, this.velocity * 0.1)
+                    );
+                }
+
+                ctx.rotate(this.rotation);
+
+                if (birdSprite.complete && birdSprite.naturalWidth !== 0) {
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 19, 0, Math.PI * 2);
+                    ctx.clip();
+
+                    ctx.drawImage(
+                        birdSprite,
+                        -19,
+                        -19,
+                        38,
+                        38
+                    );
+                    ctx.restore();
+                } else {
+                    ctx.fillStyle = '#ffd43b';
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 19, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                ctx.restore();
+            },
+
+            flap() {
+                this.velocity = this.jump;
+                playSfx(sounds.flap);
+            },
+
+            update() {
+                if (currentState === STATE.START) {
+                    this.y = 250 + Math.sin(frames * 0.08) * 6;
+                    this.rotation = 0;
+                } else {
+                    this.velocity += this.gravity;
+                    this.y += this.velocity;
+
+                    if (this.y - this.radius <= 0) {
+                        if (this.velocity < 0 && !this.ceilingHitRegistered) {
+                            ceilingHits++;
+                            localStorage.setItem('flappy_ceiling_hits', ceilingHits);
+                            this.ceilingHitRegistered = true;
+                            checkAchievements();
+                        }
+                        this.y = this.radius;
+                        this.velocity = 0;
+                    } else {
+                        this.ceilingHitRegistered = false;
+                    }
+
+                    if (this.y + this.radius >= canvas.height - ground.height) {
+                        this.y = canvas.height - ground.height - this.radius;
+                        gameOver();
+                    }
+                }
+            },
+
+            reset() {
+                this.y = 250;
+                this.velocity = 0;
+                this.rotation = 0;
+                this.ceilingHitRegistered = false;
+            }
+        };
+
+        // ==========================================================
+        // ЗЕМЛЯ
+        // ==========================================================
+        const ground = {
+            height: 80,
+            x: 0,
+            dx: 1.75,
+
+            draw() {
+                const groundY = canvas.height - this.height;
+
+                if (groundTexture.complete && groundTexture.naturalWidth !== 0) {
+                    ctx.save();
+                    ctx.translate(this.x, 0);
+                    const pattern = ctx.createPattern(groundTexture, 'repeat');
+                    ctx.fillStyle = pattern;
+                    ctx.fillRect(-this.x, groundY, canvas.width, this.height);
+                    ctx.restore();
+                } else {
+                    ctx.fillStyle = '#ded895';
+                    ctx.fillRect(0, groundY, canvas.width, this.height);
+                    ctx.fillStyle = '#73bf2e';
+                    ctx.fillRect(0, groundY, canvas.width, 14);
+                    ctx.fillStyle = '#538020';
+                    ctx.fillRect(0, groundY + 12, canvas.width, 2);
+                }
+            },
+
+            update() {
+                if (currentState !== STATE.GAMEOVER) {
+                    this.x = (this.x - this.dx) % 18;
+                }
+            }
+        };
+
+        // ==========================================================
+        // ТРУБЫ И МОНЕТКИ
+        // ==========================================================
+        const pipes = {
+            items: [],
+            width: 52,
+            gap: 130,
+            dx: 1.75,
+            pipeCounter: 0,
+
+            draw() {
+                let pipeFill = '#73bf2e';
+
+                if (pipeTexture.complete && pipeTexture.naturalWidth !== 0) {
+                    pipeFill = ctx.createPattern(pipeTexture, 'repeat');
+                }
+
+                for (const p of this.items) {
+                    // Верхняя труба
+                    ctx.fillStyle = pipeFill;
+                    ctx.fillRect(p.x, 0, this.width, p.top);
+                    ctx.strokeStyle = '#538020';
+                    ctx.lineWidth = 3;
+                    ctx.strokeRect(p.x, 0, this.width, p.top);
+
+                    // Верхняя крышка
+                    ctx.fillStyle = pipeFill;
+                    ctx.fillRect(p.x - 3, p.top - 20, this.width + 6, 20);
+                    ctx.strokeRect(p.x - 3, p.top - 20, this.width + 6, 20);
+
+                    const bottomY = p.top + this.gap;
+                    const bottomHeight = canvas.height - ground.height - bottomY;
+
+                    // Нижняя труба
+                    ctx.fillStyle = pipeFill;
+                    ctx.fillRect(p.x, bottomY, this.width, bottomHeight);
+                    ctx.strokeRect(p.x, bottomY, this.width, bottomHeight);
+
+                    // Нижняя крышка
+                    ctx.fillRect(p.x - 3, bottomY, this.width + 6, 20);
+                    ctx.strokeRect(p.x - 3, bottomY, this.width + 6, 20);
+
+                    // Отрисовка монетки
+                    if (p.hasCoin && !p.coinCollected) {
+                        ctx.save();
+                        ctx.translate(p.coinX, p.coinY);
+                        
+                        if (coinTexture.complete && coinTexture.naturalWidth !== 0) {
+                            ctx.drawImage(coinTexture, -11, -11, 22, 22);
+                        } else {
+                            ctx.fillStyle = '#ffd700';
+                            ctx.beginPath();
+                            ctx.arc(0, 0, 11, 0, Math.PI * 2);
+                            ctx.fill();
+                            ctx.strokeStyle = '#b8860b';
+                            ctx.lineWidth = 2;
+                            ctx.stroke();
+
+                            ctx.strokeStyle = '#e6b800';
+                            ctx.lineWidth = 1;
+                            ctx.beginPath();
+                            ctx.arc(0, 0, 8, 0, Math.PI * 2);
+                            ctx.stroke();
+
+                            ctx.fillStyle = '#ffffff';
+                            ctx.beginPath();
+                            ctx.arc(-3, -3, 3, 0, Math.PI * 2);
+                            ctx.fill();
+                        }
+
+                        ctx.restore();
+                    }
+                }
+            },
+
+            update() {
+                if (currentState !== STATE.PLAYING) return;
+
+                if (frames % 115 === 0) {
+                    const minTop = 50;
+                    const maxTop = canvas.height - ground.height - this.gap - 50;
+                    const top = Math.floor(
+                        Math.random() * (maxTop - minTop + 1)
+                    ) + minTop;
+
+                    this.pipeCounter++;
+                    const hasCoin = (this.pipeCounter % 3 === 0);
+                    const coinX = canvas.width + (this.width / 2);
+                    const coinY = top + (this.gap / 2);
+
+                    this.items.push({
+                        x: canvas.width,
+                        top,
+                        passed: false,
+                        dy: Math.random() < 0.5 ? 0.3 : -0.3,
+                        hasCoin: hasCoin,
+                        coinCollected: false,
+                        coinX: coinX,
+                        coinY: coinY
+                    });
+                }
+
+                for (let i = 0; i < this.items.length; i++) {
+                    const p = this.items[i];
+                    p.x -= this.dx;
+                    if (p.hasCoin && !p.coinCollected) {
+                        p.coinX -= this.dx;
+                    }
+
+                    if (score >= 30) {
+                        p.top += p.dy;
+                        const minTop = 40;
+                        const maxTop = canvas.height - ground.height - this.gap - 40;
+                        if (p.top <= minTop) {
+                            p.top = minTop;
+                            p.dy = Math.abs(p.dy);
+                        } else if (p.top >= maxTop) {
+                            p.top = maxTop;
+                            p.dy = -Math.abs(p.dy);
+                        }
+                        if (p.hasCoin && !p.coinCollected) {
+                            p.coinY = p.top + (this.gap / 2);
+                        }
+                    }
+
+                    if (p.hasCoin && !p.coinCollected) {
+                        const distX = bird.x - p.coinX;
+                        const distY = bird.y - p.coinY;
+                        const distance = Math.sqrt(distX * distX + distY * distY);
+                        if (distance < bird.radius + 11) {
+                            p.coinCollected = true;
+                            coins++;
+                            sessionCoins++;
+                            localStorage.setItem('flappy_coins', coins);
+                            playSfx(sounds.coin);
+                            checkAchievements();
+                        }
+                    }
+
+                    if (!p.passed && p.x + this.width < bird.x) {
+                        score++;
+                        p.passed = true;
+                        playSfx(sounds.score);
+                        checkAchievements();
+
+                        if (score > highScore) {
+                            highScore = score;
+                            localStorage.setItem('flappy_highscore', highScore);
+                        }
+                    }
+
+                    const birdRight = bird.x + bird.radius;
+                    const birdLeft = bird.x - bird.radius;
+                    const birdTop = bird.y - bird.radius;
+                    const birdBottom = bird.y + bird.radius;
+
+                    if (birdRight > p.x && birdLeft < p.x + this.width) {
+                        if (birdTop < p.top || birdBottom > p.top + this.gap) {
+                            gameOver();
+                        }
+                    }
+
+                    if (p.x + this.width < 0) {
+                        this.items.splice(i, 1);
+                        i--;
+                    }
+                }
+            },
+
+            reset() {
+                this.items = [];
+                this.pipeCounter = 0;
+            }
+        };
+
+        // ==========================================================
+        // УПРАВЛЕНИЕ И СОСТОЯНИЯ ИГРЫ
+        // ==========================================================
+        function action() {
+            if (menuModal.style.display === 'flex' || skinsModal.style.display === 'flex' || achievementsModal.style.display === 'flex') {
+                return;
+            }
+
+            if (currentState === STATE.START) {
+                sessionCoins = 0;
+                startMusic();
+                currentState = STATE.PLAYING;
+                bird.flap();
+            } else if (currentState === STATE.PLAYING) {
+                bird.flap();
+            } else if (currentState === STATE.GAMEOVER) {
+                pipes.reset();
+                bird.reset();
+                score = 0;
+                sessionCoins = 0;
+                currentState = STATE.PLAYING;
+                startMusic();
+                bird.flap();
+            }
+        }
+
+        function gameOver() {
+            if (currentState !== STATE.GAMEOVER) {
+                playSfx(sounds.hit);
+                sounds.music.pause();
+                sounds.music.currentTime = 0;
+
+                if (score === 69) {
+                    const ach = ACHIEVEMENTS.find(a => a.id === 'ach_lust_69');
+                    if (ach) unlockAchievement(ach);
+                }
+                if (score === 0) {
+                    const ach = ACHIEVEMENTS.find(a => a.id === 'ach_sloth_0');
+                    if (ach) unlockAchievement(ach);
+                }
+                if (score === 8) {
+                    const ach = ACHIEVEMENTS.find(a => a.id === 'ach_sin8_score8');
+                    if (ach) unlockAchievement(ach);
+                }
+            }
+
+            currentState = STATE.GAMEOVER;
+        }
+
+        // ==========================================================
+        // ТЕКСТЫ НА ЭКРАНЕ
+        // ==========================================================
+        function drawUI() {
+            // Отображение монет слева вверху
+            ctx.save();
+            ctx.textAlign = 'left';
+            ctx.font = 'bold 20px sans-serif';
+            ctx.fillStyle = '#ffd700';
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 3;
+
+            if (coinGuiTexture.complete && coinGuiTexture.naturalWidth !== 0) {
+                ctx.drawImage(coinGuiTexture, 12, 14, 22, 22);
+                ctx.strokeText(`${coins}`, 40, 32);
+                ctx.fillText(`${coins}`, 40, 32);
+            } else {
+                ctx.strokeText(`🪙 ${coins}`, 14, 32);
+                ctx.fillText(`🪙 ${coins}`, 14, 32);
+            }
+            ctx.restore();
+
+            ctx.fillStyle = '#fff';
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 2;
+
+            if (currentState === STATE.START) {
+                ctx.font = 'bold 26px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('Летающий Антон', canvas.width / 2, 160);
+                ctx.strokeText('Летающий Антон', canvas.width / 2, 160);
+
+                ctx.font = '18px sans-serif';
+                ctx.fillText('ТЫКАЙ', canvas.width / 2, 340);
+            } else if (currentState === STATE.PLAYING) {
+                ctx.font = 'bold 36px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(score, canvas.width / 2, 70);
+                ctx.strokeText(score, canvas.width / 2, 70);
+            } else if (currentState === STATE.GAMEOVER) {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+                ctx.fillRect(30, 140, canvas.width - 60, 220);
+
+                ctx.fillStyle = '#e64a19';
+                ctx.font = 'bold 30px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('Ты проиграл(', canvas.width / 2, 190);
+
+                ctx.fillStyle = '#fff';
+                ctx.font = '20px sans-serif';
+                ctx.fillText(`Очков: ${score}`, canvas.width / 2, 235);
+                ctx.fillText(`Максимум: ${highScore}`, canvas.width / 2, 265);
+                
+                ctx.fillStyle = '#ffd700';
+                ctx.fillText(`Нищета: 🪙 ${coins}`, canvas.width / 2, 295);
+
+                ctx.font = '16px sans-serif';
+                ctx.fillStyle = '#ffeb3b';
+                ctx.fillText('Рестарти давай', canvas.width / 2, 335);
+            }
+        }
+
+        // ==========================================================
+        // ИГРОВОЙ ЦИКЛ
+        // ==========================================================
+        function loop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const controls = document.getElementById('controls-container');
+            if (currentState === STATE.START || currentState === STATE.GAMEOVER) {
+                controls.style.display = 'flex';
+            } else {
+                controls.style.display = 'none';
+                menuModal.style.display = 'none';
+                skinsModal.style.display = 'none';
+                achievementsModal.style.display = 'none';
+            }
+
+            if (currentState !== STATE.GAMEOVER) {
+                bgX = (bgX - 0.4) % canvas.width;
+            }
+
+            if (backgroundTexture.complete && backgroundTexture.naturalWidth !== 0) {
+                ctx.drawImage(backgroundTexture, bgX, 0, canvas.width, canvas.height);
+                ctx.drawImage(backgroundTexture, bgX + canvas.width, 0, canvas.width, canvas.height);
+            } else {
+                ctx.fillStyle = '#70c5ce';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+
+            bird.update();
+            pipes.update();
+            ground.update();
+
+            pipes.draw();
+            ground.draw();
+            bird.draw();
+            drawUI();
+
+            frames++;
+            requestAnimationFrame(loop);
+        }
+
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                action();
+            }
+        });
+
+        canvas.addEventListener('click', action);
+
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            action();
+        });
+
+        loop();
+    </script>
+</body>
+</html>
